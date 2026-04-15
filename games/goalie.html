@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Goalie - Bet Titan</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --teal: #008080;
+    --teal-light: #20B2AA;
+    --teal-dark: #006666;
+    --dark: #0a1628;
+    --dark-light: #152238;
+    --dark-dark: #050d18;
+    --text-primary: #FFFFFF;
+    --text-secondary: #a8c5e8;
+    --success: #00ff88;
+    --danger: #ff4757;
+    --warning: #ffa502;
+    --gold: #ffd700;
+    --border: rgba(0, 128, 128, 0.3);
+  }
+  
+  *{box-sizing:border-box;margin:0;padding:0;}
+  
+  body{
+    background:linear-gradient(135deg, var(--dark-dark) 0%, var(--dark) 50%, var(--dark-light) 100%);
+    color:var(--text-primary);
+    font-family:'Exo 2', sans-serif;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:20px;
+  }
+  
+  .game-container{
+    width:100%;
+    max-width:500px;
+    background:var(--dark);
+    border:1px solid var(--border);
+    border-radius:16px;
+    overflow:hidden;
+  }
+  
+  .game-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:16px 20px;
+    background:rgba(0, 128, 128, 0.1);
+    border-bottom:1px solid var(--border);
+  }
+  
+  .game-title{
+    font-family:'Orbitron', sans-serif;
+    font-size:22px;
+    font-weight:700;
+    color:var(--teal-light);
+  }
+  
+  .balance-badge{
+    background:var(--dark-light);
+    border:1px solid var(--border);
+    padding:8px 14px;
+    border-radius:20px;
+    font-weight:700;
+    color:var(--teal-light);
+  }
+  
+  .game-area{
+    padding:30px 20px;
+    text-align:center;
+  }
+  
+  .goal-area{
+    position:relative;
+    width:280px;
+    height:180px;
+    margin:0 auto 30px;
+    background:linear-gradient(to bottom, 
+      rgba(0, 128, 128, 0.2) 0%,
+      rgba(0, 128, 128, 0.1) 50%,
+      rgba(0, 50, 50, 0.3) 100%
+    );
+    border:4px solid var(--teal);
+    border-bottom:none;
+    border-radius:8px 8px 0 0;
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    grid-template-rows:repeat(2, 1fr);
+    gap:4px;
+    padding:4px;
+  }
+  
+  .goal-zone{
+    background:rgba(0, 128, 128, 0.1);
+    border:2px dashed rgba(0, 128, 128, 0.3);
+    border-radius:4px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:24px;
+    cursor:pointer;
+    transition:all .2s;
+    position:relative;
+  }
+  
+  .goal-zone:hover:not(.disabled){
+    background:rgba(0, 128, 128, 0.3);
+    border-color:var(--teal-light);
+    transform:scale(1.05);
+  }
+  
+  .goal-zone.disabled{
+    cursor:not-allowed;
+    opacity:0.7;
+  }
+  
+  .goal-zone.saved{
+    background:rgba(0, 255, 136, 0.3);
+    border-color:var(--success);
+  }
+  
+  .goal-zone.goal{
+    background:rgba(255, 71, 87, 0.3);
+    border-color:var(--danger);
+  }
+  
+  .goal-zone .ball{
+    position:absolute;
+    font-size:36px;
+    animation:ballFly 0.3s ease-out;
+  }
+  
+  @keyframes ballFly{
+    0%{transform:scale(0) translateY(50px);opacity:0;}
+    100%{transform:scale(1) translateY(0);opacity:1;}
+  }
+  
+  .goalkeeper{
+    position:absolute;
+    bottom:10px;
+    left:50%;
+    transform:translateX(-50%);
+    font-size:48px;
+    transition:all 0.3s ease;
+    z-index:10;
+  }
+  
+  .goalkeeper.dive-left{transform:translateX(-120px) rotate(-30deg);}
+  .goalkeeper.dive-right{transform:translateX(120px) rotate(30deg);}
+  .goalkeeper.dive-center{transform:translateX(-50%) translateY(-20px);}
+  
+  .stats-row{
+    display:flex;
+    justify-content:center;
+    gap:30px;
+    margin-bottom:20px;
+  }
+  
+  .stat{
+    text-align:center;
+  }
+  
+  .stat .value{
+    font-size:28px;
+    font-weight:800;
+    color:var(--teal-light);
+    font-family:'Orbitron', sans-serif;
+  }
+  
+  .stat .label{
+    font-size:11px;
+    color:var(--text-secondary);
+    text-transform:uppercase;
+    letter-spacing:1px;
+  }
+  
+  .round-indicator{
+    display:flex;
+    justify-content:center;
+    gap:8px;
+    margin-bottom:20px;
+  }
+  
+  .round-dot{
+    width:12px;
+    height:12px;
+    border-radius:50%;
+    background:var(--dark-light);
+    border:2px solid var(--border);
+  }
+  
+  .round-dot.current{
+    border-color:var(--teal);
+    background:rgba(0, 128, 128, 0.3);
+  }
+  
+  .round-dot.saved{background:var(--success);border-color:var(--success);}
+  .round-dot.goal{background:var(--danger);border-color:var(--danger);}
+  
+  .multiplier-display{
+    font-family:'Orbitron', sans-serif;
+    font-size:36px;
+    font-weight:800;
+    color:var(--gold);
+    margin-bottom:20px;
+  }
+  
+  .message{
+    padding:16px;
+    border-radius:10px;
+    margin-bottom:16px;
+    font-weight:600;
+    text-align:center;
+  }
+  
+  .message.info{background:rgba(0, 128, 128, 0.2);color:var(--teal-light);}
+  .message.success{background:rgba(0, 255, 136, 0.2);color:var(--success);}
+  .message.error{background:rgba(255, 71, 87, 0.2);color:var(--danger);}
+  .message.warning{background:rgba(255, 165, 2, 0.2);color:var(--warning);}
+  
+  .controls{
+    padding:20px;
+    border-top:1px solid var(--border);
+  }
+  
+  .bet-row{
+    display:flex;
+    gap:12px;
+    margin-bottom:12px;
+  }
+  
+  .bet-input{
+    flex:1;
+    padding:14px;
+    background:var(--dark-light);
+    border:1px solid var(--border);
+    border-radius:10px;
+    color:var(--text-primary);
+    font-size:16px;
+    text-align:center;
+  }
+  
+  .btn{
+    flex:1;
+    padding:14px 20px;
+    border-radius:10px;
+    font-family:'Rajdhani', sans-serif;
+    font-weight:700;
+    font-size:15px;
+    cursor:pointer;
+    border:none;
+    transition:all .3s;
+    text-transform:uppercase;
+    letter-spacing:1px;
+  }
+  
+  .btn-primary{
+    background:linear-gradient(135deg, var(--teal), var(--teal-dark));
+    color:var(--white);
+  }
+  
+  .btn-success{
+    background:linear-gradient(135deg, var(--success), #00cc6a);
+    color:var(--dark);
+  }
+  
+  .btn:disabled{
+    opacity:0.5;
+    cursor:not-allowed;
+  }
+  
+  .countdown-bar{
+    text-align:center;
+    padding:12px;
+    background:rgba(255,165,2,0.1);
+    color:var(--warning);
+    font-weight:600;
+  }
+  
+  .instructions{
+    font-size:12px;
+    color:var(--text-secondary);
+    text-align:center;
+    margin-top:12px;
+    line-height:1.5;
+  }
+</style>
+<script src="https://sites.super.myninja.ai/_assets/ninja-daytona-script.js"></script>
+</head>
+<body>
+<div class="game-container">
+  <div class="game-header">
+    <h1 class="game-title">GOALIE</h1>
+    <div class="balance-badge">K<span id="balance">0.00</span></div>
+  </div>
+  
+  <div class="game-area">
+    <div class="stats-row">
+      <div class="stat">
+        <div class="value" id="saves">0</div>
+        <div class="label">Saves</div>
+      </div>
+      <div class="stat">
+        <div class="value" id="round">0/5</div>
+        <div class="label">Round</div>
+      </div>
+      <div class="stat">
+        <div class="value" id="multiplier">1.00x</div>
+        <div class="label">Multiplier</div>
+      </div>
+    </div>
+    
+    <div class="round-indicator" id="roundIndicator">
+      <div class="round-dot"></div>
+      <div class="round-dot"></div>
+      <div class="round-dot"></div>
+      <div class="round-dot"></div>
+      <div class="round-dot"></div>
+    </div>
+    
+    <div class="goal-area" id="goalArea">
+      <div class="goal-zone" data-zone="0">🎯</div>
+      <div class="goal-zone" data-zone="1">🎯</div>
+      <div class="goal-zone" data-zone="2">🎯</div>
+      <div class="goal-zone" data-zone="3">🎯</div>
+      <div class="goal-zone" data-zone="4">🎯</div>
+      <div class="goal-zone" data-zone="5">🎯</div>
+      <div class="goalkeeper" id="goalkeeper">🧤</div>
+    </div>
+    
+    <div class="message info" id="message">Place your bet and choose where to dive!</div>
+    
+    <div class="multiplier-display" id="potentialWin">Potential: K0.00</div>
+  </div>
+  
+  <div class="countdown-bar" id="countdownBar" style="display:none;">
+    Next round in <span id="countdown">5</span> seconds...
+  </div>
+  
+  <div class="controls">
+    <div class="bet-row">
+      <input type="number" class="bet-input" id="betAmount" placeholder="Bet Amount" value="10" min="1">
+      <button class="btn btn-primary" id="startBtn" onclick="startGame()">Start Game</button>
+      <button class="btn btn-success" id="cashoutBtn" onclick="cashout()" style="display:none;">Cash Out</button>
+    </div>
+  </div>
+  
+  <div class="instructions">
+    Predict where the ball will go! Save 5 shots to win big. Cash out anytime between shots.
+    Each save increases your multiplier!
+  </div>
+</div>
+
+<script>
+let balance = 100;
+let currentBet = 0;
+let gameActive = false;
+let currentRound = 0;
+let saves = 0;
+let multiplier = 1.0;
+let canDive = false;
+
+const MULTIPLIERS = [1.5, 2.0, 3.0, 5.0, 10.0];
+const ZONES = ['Top Left', 'Top Center', 'Top Right', 'Bottom Left', 'Bottom Center', 'Bottom Right'];
+
+function updateBalance() {
+  document.getElementById('balance').textContent = balance.toFixed(2);
+}
+
+function updateStats() {
+  document.getElementById('saves').textContent = saves;
+  document.getElementById('round').textContent = currentRound + '/5';
+  document.getElementById('multiplier').textContent = saves > 0 ? MULTIPLIERS[saves - 1].toFixed(2) + 'x' : '1.00x';
+  document.getElementById('potentialWin').textContent = 'Potential: K' + (currentBet * (saves > 0 ? MULTIPLIERS[saves - 1] : 1)).toFixed(2);
+  
+  // Update round indicator
+  const dots = document.querySelectorAll('.round-dot');
+  dots.forEach((dot, i) => {
+    dot.className = 'round-dot';
+    if (i < currentRound) {
+      dot.classList.add(i < saves ? 'saved' : 'goal');
+    } else if (i === currentRound && gameActive) {
+      dot.classList.add('current');
+    }
+  });
+}
+
+function setMessage(text, type = 'info') {
+  const msg = document.getElementById('message');
+  msg.textContent = text;
+  msg.className = 'message ' + type;
+}
+
+function enableZones(enable) {
+  document.querySelectorAll('.goal-zone').forEach(zone => {
+    if (enable) {
+      zone.classList.remove('disabled');
+      zone.onclick = () => dive(parseInt(zone.dataset.zone));
+    } else {
+      zone.classList.add('disabled');
+      zone.onclick = null;
+    }
+  });
+  canDive = enable;
+}
+
+function startGame() {
+  const bet = parseFloat(document.getElementById('betAmount').value);
+  if (bet <= 0 || bet > balance) {
+    setMessage('Invalid bet amount', 'error');
+    return;
+  }
+  
+  currentBet = bet;
+  balance -= bet;
+  updateBalance();
+  
+  gameActive = true;
+  currentRound = 0;
+  saves = 0;
+  multiplier = 1.0;
+  
+  document.getElementById('startBtn').style.display = 'none';
+  document.getElementById('betAmount').disabled = true;
+  document.getElementById('cashoutBtn').style.display = 'block';
+  
+  updateStats();
+  setMessage('Choose where to dive!', 'info');
+  
+  setTimeout(() => playRound(), 500);
+}
+
+function playRound() {
+  if (!gameActive || currentRound >= 5) {
+    endGame();
+    return;
+  }
+  
+  // Clear previous ball
+  document.querySelectorAll('.goal-zone .ball').forEach(b => b.remove());
+  document.querySelectorAll('.goal-zone').forEach(z => z.classList.remove('saved', 'goal'));
+  document.getElementById('goalkeeper').className = 'goalkeeper';
+  
+  setMessage('DIVE! Choose a zone!', 'warning');
+  enableZones(true);
+  
+  // Auto-miss after 3 seconds if no choice
+  setTimeout(() => {
+    if (canDive && gameActive) {
+      dive(-1); // Auto random
+    }
+  }, 3000);
+}
+
+function dive(playerChoice) {
+  if (!canDive) return;
+  enableZones(false);
+  
+  // Random ball position (cannot be predicted)
+  const ballZone = Math.floor(Math.random() * 6);
+  
+  // Move goalkeeper
+  const keeper = document.getElementById('goalkeeper');
+  if (playerChoice === -1) {
+    // Auto - random dive
+    const randomDive = Math.floor(Math.random() * 6);
+    keeper.classList.add(getDiveClass(randomDive));
+  } else {
+    keeper.classList.add(getDiveClass(playerChoice));
+  }
+  
+  // Show ball
+  setTimeout(() => {
+    const zones = document.querySelectorAll('.goal-zone');
+    zones[ballZone].innerHTML += '<span class="ball">⚽</span>';
+    
+    // Check if saved
+    const saved = playerChoice === ballZone;
+    
+    setTimeout(() => {
+      if (saved) {
+        saves++;
+        zones[ballZone].classList.add('saved');
+        setMessage('SAVE! Great reflexes!', 'success');
+        multiplier = MULTIPLIERS[Math.min(saves - 1, 4)];
+      } else {
+        zones[ballZone].classList.add('goal');
+        setMessage('GOAL! The ball went ' + ZONES[ballZone], 'error');
+      }
+      
+      currentRound++;
+      updateStats();
+      
+      if (currentRound >= 5 || (!saved && saves === 0)) {
+        endGame(saved);
+      } else {
+        setTimeout(() => playRound(), 1500);
+      }
+    }, 500);
+  }, 300);
+}
+
+function getDiveClass(zone) {
+  if (zone <= 2) return 'dive-center';
+  if (zone === 0 || zone === 3) return 'dive-left';
+  return 'dive-right';
+}
+
+function cashout() {
+  if (!gameActive || saves === 0) return;
+  
+  gameActive = false;
+  const winAmount = currentBet * MULTIPLIERS[saves - 1];
+  balance += winAmount;
+  updateBalance();
+  
+  setMessage(`Cashed out! Won K${winAmount.toFixed(2)} with ${saves} saves!`, 'success');
+  
+  document.getElementById('cashoutBtn').style.display = 'none';
+  startCountdown();
+}
+
+function endGame(wasLastSave = false) {
+  gameActive = false;
+  document.getElementById('cashoutBtn').style.display = 'none';
+  
+  if (saves > 0) {
+    const winAmount = currentBet * MULTIPLIERS[saves - 1];
+    balance += winAmount;
+    updateBalance();
+    setMessage(`Game Over! ${saves}/5 saves! Won K${winAmount.toFixed(2)}!`, 'success');
+  } else {
+    setMessage('Game Over! No saves. Better luck next time!', 'error');
+  }
+  
+  startCountdown();
+}
+
+function startCountdown() {
+  document.getElementById('countdownBar').style.display = 'block';
+  document.getElementById('startBtn').style.display = 'block';
+  document.getElementById('startBtn').disabled = true;
+  document.getElementById('betAmount').disabled = true;
+  
+  let countdown = 5;
+  document.getElementById('countdown').textContent = countdown;
+  
+  const interval = setInterval(() => {
+    countdown--;
+    document.getElementById('countdown').textContent = countdown;
+    
+    if (countdown <= 0) {
+      clearInterval(interval);
+      document.getElementById('countdownBar').style.display = 'none';
+      document.getElementById('startBtn').disabled = false;
+      document.getElementById('betAmount').disabled = false;
+      
+      // Reset game state
+      currentRound = 0;
+      saves = 0;
+      multiplier = 1.0;
+      currentBet = 0;
+      updateStats();
+      setMessage('Place your bet and choose where to dive!', 'info');
+      
+      // Clear visual state
+      document.querySelectorAll('.goal-zone').forEach(z => {
+        z.classList.remove('saved', 'goal');
+        z.innerHTML = '🎯';
+      });
+      document.getElementById('goalkeeper').className = 'goalkeeper';
+    }
+  }, 1000);
+}
+
+// Initialize
+updateBalance();
+updateStats();
+
+// Listen for balance updates from parent
+window.addEventListener('message', function(e) {
+  if (e.data.type === 'balance') {
+    balance = e.data.balance;
+    updateBalance();
+  }
+});
+</script>
+</body>
+</html>
