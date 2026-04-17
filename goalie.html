@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<title>Goalie — Bet Titan</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{--T:#2ab5a0;--TL:#3dd4be;--TD:#1a9080;--RED:#e53935;--GRN:#00897b;--AMB:#f59e0b;--GOLD:#ffd600;}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{min-height:100%;font-family:'Inter',sans-serif;background:#071018;color:#fff;overflow-x:hidden;}
+#app{display:flex;flex-direction:column;min-height:100vh;max-width:480px;margin:0 auto;}
+
+/* HEADER */
+.hdr{background:#0d2b2a;padding:10px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(42,181,160,.2);}
+.hdr-title{font-size:16px;font-weight:800;color:#fff;}
+.hdr-bal{background:rgba(42,181,160,.15);border:1px solid rgba(42,181,160,.28);color:var(--TL);font-weight:700;font-size:13px;padding:5px 12px;border-radius:16px;margin-left:auto;}
+
+/* STATS STRIP */
+.stats-strip{display:flex;gap:0;border-bottom:1px solid rgba(42,181,160,.15);}
+.st{flex:1;padding:12px 8px;text-align:center;border-right:1px solid rgba(42,181,160,.1);}
+.st:last-child{border-right:none;}
+.st .sl{font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;}
+.st .sv{font-size:20px;font-weight:800;color:var(--TL);}
+.st .sv.gold{color:var(--GOLD);}
+
+/* ROUND DOTS */
+.round-dots{display:flex;justify-content:center;gap:8px;padding:12px 14px;}
+.rdot{width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.12);transition:all .3s;}
+.rdot.current{border-color:var(--T);background:rgba(42,181,160,.2);}
+.rdot.saved{background:var(--GRN);border-color:var(--GRN);}
+.rdot.goal{background:var(--RED);border-color:var(--RED);}
+
+/* GOAL VISUAL */
+.goal-section{padding:10px 14px;flex:1;display:flex;flex-direction:column;align-items:center;gap:10px;}
+.goal-frame{position:relative;width:100%;max-width:320px;aspect-ratio:4/3;
+  background:linear-gradient(to bottom,rgba(42,181,160,.08),rgba(42,181,160,.03));
+  border:3px solid var(--T);border-bottom:none;border-radius:8px 8px 0 0;
+  display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);
+  gap:3px;padding:3px;overflow:visible;}
+.goal-zone{background:rgba(255,255,255,.03);border:2px dashed rgba(42,181,160,.2);
+  border-radius:5px;display:flex;align-items:center;justify-content:center;
+  font-size:clamp(16px,4vw,22px);cursor:pointer;transition:all .2s;position:relative;}
+.goal-zone:hover:not(.disabled){background:rgba(42,181,160,.15);border-color:var(--T);transform:scale(1.04);}
+.goal-zone.disabled{cursor:not-allowed;}
+.goal-zone.selected{background:rgba(42,181,160,.25);border-color:var(--TL);border-style:solid;}
+.goal-zone.saved-zone{background:rgba(0,137,123,.3);border-color:var(--GRN);border-style:solid;animation:pulse .4s ease;}
+.goal-zone.goal-zone-hit{background:rgba(229,57,53,.25);border-color:var(--RED);border-style:solid;animation:pulse .4s ease;}
+@keyframes pulse{0%{transform:scale(1);}50%{transform:scale(1.08);}100%{transform:scale(1);}}
+
+/* GOALKEEPER */
+.gk-bar{width:100%;max-width:320px;height:40px;position:relative;background:linear-gradient(90deg,transparent,rgba(42,181,160,.1),transparent);border-radius:0 0 8px 8px;border:2px solid var(--T);border-top:none;display:flex;align-items:center;justify-content:center;}
+.gk-wrap{position:absolute;font-size:clamp(24px,6vw,36px);transition:all 0.35s cubic-bezier(.2,.8,.3,1.2);display:flex;align-items:center;justify-content:center;}
+.gk-wrap.center{left:50%;transform:translateX(-50%);}
+.gk-wrap.left{left:8px;transform:none;}
+.gk-wrap.right{right:8px;left:auto;transform:none;}
+.gk-wrap.dive-l{left:0;transform:translateX(-10%) rotate(-20deg);}
+.gk-wrap.dive-r{right:0;left:auto;transform:translateX(10%) rotate(20deg);}
+.gk-wrap.dive-up{left:50%;transform:translateX(-50%) translateY(-12px);}
+
+/* MESSAGE */
+.msg-box{width:100%;max-width:320px;padding:10px 14px;border-radius:9px;
+  font-size:13px;font-weight:700;text-align:center;min-height:42px;display:flex;align-items:center;justify-content:center;}
+.msg-info{background:rgba(42,181,160,.1);border:1px solid rgba(42,181,160,.25);color:var(--TL);}
+.msg-win{background:rgba(0,137,123,.2);border:1px solid rgba(0,137,123,.4);color:#4db6ac;}
+.msg-lose{background:rgba(229,57,53,.15);border:1px solid rgba(229,57,53,.3);color:#ef9a9a;}
+.msg-wait{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);color:var(--AMB);}
+
+/* MULTIPLIER BADGE */
+.mult-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,214,0,.1);
+  border:1px solid rgba(255,214,0,.25);border-radius:20px;padding:6px 14px;}
+.mult-badge .val{font-size:22px;font-weight:900;color:var(--GOLD);}
+.mult-badge .lbl{font-size:11px;color:rgba(255,255,255,.5);}
+
+/* CONTROLS */
+.controls{background:#0d2b2a;border-top:1px solid rgba(42,181,160,.2);padding:12px 14px;}
+.quick-bets{display:flex;gap:5px;margin-bottom:10px;}
+.qb{flex:1;padding:7px 4px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);
+  border-radius:7px;font-size:11px;font-weight:700;color:rgba(255,255,255,.6);cursor:pointer;text-align:center;transition:all .2s;}
+.qb:hover{background:rgba(42,181,160,.15);border-color:var(--T);color:var(--TL);}
+.bet-row{display:flex;gap:8px;margin-bottom:10px;}
+.bet-input{flex:1;padding:11px 13px;background:rgba(255,255,255,.06);
+  border:2px solid rgba(42,181,160,.25);border-radius:9px;color:#fff;font-size:15px;
+  font-weight:700;text-align:center;font-family:'Inter';outline:none;}
+.bet-input:focus{border-color:var(--T);}
+.btn-row{display:flex;gap:8px;}
+.action-btn{flex:1;padding:13px;border:none;border-radius:11px;font-size:14px;
+  font-weight:800;cursor:pointer;font-family:'Inter';transition:all .2s;}
+.btn-start{background:linear-gradient(135deg,var(--T),var(--TD));color:#fff;box-shadow:0 4px 20px rgba(42,181,160,.35);}
+.btn-start:hover{filter:brightness(1.1);}
+.btn-start:disabled{opacity:.45;cursor:not-allowed;box-shadow:none;}
+.btn-cashout{background:linear-gradient(135deg,#00d4aa,#00897b);color:#fff;
+  box-shadow:0 4px 20px rgba(0,212,170,.4);animation:cpulse .9s ease infinite;}
+@keyframes cpulse{0%,100%{box-shadow:0 4px 20px rgba(0,212,170,.4);}50%{box-shadow:0 4px 30px rgba(0,212,170,.7);}}
+.btn-cashout:hover{filter:brightness(1.1);}
+.btn-cashout:disabled{opacity:.45;cursor:not-allowed;animation:none;}
+
+/* COUNTDOWN */
+.cd-bar{background:rgba(245,158,11,.1);border-top:1px solid rgba(245,158,11,.25);
+  padding:8px 14px;text-align:center;font-size:12px;font-weight:600;color:var(--AMB);display:none;}
+.cd-bar.show{display:block;}
+
+/* TOAST */
+.toast{position:fixed;top:12px;left:50%;transform:translateX(-50%) translateY(-80px);
+  background:#0d2b2a;border:1px solid rgba(42,181,160,.3);color:#fff;padding:9px 18px;
+  border-radius:20px;font-size:13px;font-weight:600;z-index:100;transition:transform .3s;
+  white-space:nowrap;text-align:center;max-width:90vw;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.ok{border-color:var(--GRN);color:#4db6ac;}
+.toast.err{border-color:var(--RED);color:#ef9a9a;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="hdr">
+    <div class="hdr-title">🧤 GOALIE</div>
+    <div class="hdr-bal">K<span id="balDisplay">0.00</span></div>
+  </div>
+
+  <div class="stats-strip">
+    <div class="st"><div class="sl">Saves</div><div class="sv" id="savesCount">0</div></div>
+    <div class="st"><div class="sl">Round</div><div class="sv" id="roundNum">0/5</div></div>
+    <div class="st"><div class="sl">Multiplier</div><div class="sv gold" id="multStat">1.00x</div></div>
+    <div class="st"><div class="sl">Pot. Win</div><div class="sv" id="potWin">K0.00</div></div>
+  </div>
+
+  <div class="round-dots" id="roundDots">
+    <div class="rdot"></div><div class="rdot"></div><div class="rdot"></div>
+    <div class="rdot"></div><div class="rdot"></div>
+  </div>
+
+  <div class="goal-section">
+    <div class="goal-frame" id="goalFrame">
+      <div class="goal-zone disabled" data-z="0">🎯</div>
+      <div class="goal-zone disabled" data-z="1">🎯</div>
+      <div class="goal-zone disabled" data-z="2">🎯</div>
+      <div class="goal-zone disabled" data-z="3">🎯</div>
+      <div class="goal-zone disabled" data-z="4">🎯</div>
+      <div class="goal-zone disabled" data-z="5">🎯</div>
+    </div>
+    <div class="gk-bar">
+      <div class="gk-wrap center" id="gkWrap">🧤</div>
+    </div>
+    <div class="mult-badge">
+      <div class="lbl">Cashout</div>
+      <div class="val" id="multBadge">1.00x</div>
+      <div class="lbl">= <span id="cashWin">K0.00</span></div>
+    </div>
+    <div class="msg-box msg-info" id="msgBox">Place your bet and start to save penalties!</div>
+  </div>
+
+  <div class="cd-bar" id="cdBar">Next round in <span id="cdNum">5</span>s...</div>
+
+  <div class="controls">
+    <div class="quick-bets">
+      <div class="qb" onclick="setAmt(5)">K5</div>
+      <div class="qb" onclick="setAmt(10)">K10</div>
+      <div class="qb" onclick="setAmt(20)">K20</div>
+      <div class="qb" onclick="setAmt(50)">K50</div>
+      <div class="qb" onclick="setAmt(100)">K100</div>
+    </div>
+    <div class="bet-row">
+      <input class="bet-input" id="betAmt" type="number" value="10" min="1" placeholder="Bet amount"/>
+    </div>
+    <div class="btn-row">
+      <button class="action-btn btn-start" id="startBtn" onclick="startGame()">🧤 Start Game</button>
+      <button class="action-btn btn-cashout" id="cashoutBtn" onclick="doCashout()" style="display:none">💰 Cash Out</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const MULTS = [1.5, 2.0, 3.0, 5.0, 10.0];
+const ZONES = ['Top Left','Top Centre','Top Right','Bot Left','Bot Centre','Bot Right'];
+const GK_POSITIONS = ['dive-l','dive-l','left','center','right','dive-r'];
+
+let balance = 0;
+let gameActive = false;
+let curBet = 0;
+let currentRound = 0;
+let saves = 0;
+let canDive = false;
+let diveTimeout = null;
+
+window.addEventListener('message', e => {
+  if (e.data && e.data.type === 'balance') {
+    balance = e.data.balance;
+    document.getElementById('balDisplay').textContent = balance.toFixed(2);
+  }
+});
+if (window.parent !== window) window.parent.postMessage({ type: 'gb' }, '*');
+
+function sendBal() {
+  if (window.parent !== window) window.parent.postMessage({ type: 'balUpdate', balance }, '*');
+  document.getElementById('balDisplay').textContent = balance.toFixed(2);
+}
+
+function secureRandInt(n) {
+  try {
+    const arr = new Uint32Array(1);
+    crypto.getRandomValues(arr);
+    return arr[0] % n;
+  } catch(e) {
+    return Math.floor(Math.random() * n);
+  }
+}
+
+function setAmt(v) { document.getElementById('betAmt').value = v; }
+
+function updateStats() {
+  document.getElementById('savesCount').textContent = saves;
+  document.getElementById('roundNum').textContent = currentRound + '/5';
+  const mult = saves > 0 ? MULTS[Math.min(saves-1, 4)] : 1.0;
+  document.getElementById('multStat').textContent = mult.toFixed(2) + 'x';
+  document.getElementById('multBadge').textContent = mult.toFixed(2) + 'x';
+  const winVal = saves > 0 ? (curBet * mult).toFixed(2) : '0.00';
+  document.getElementById('potWin').textContent = 'K' + winVal;
+  document.getElementById('cashWin').textContent = 'K' + winVal;
+}
+
+function updateDots() {
+  const dots = document.querySelectorAll('.rdot');
+  dots.forEach((d, i) => {
+    d.className = 'rdot';
+    if (i < currentRound) {
+      // Determine if it was a save or goal
+    } else if (i === currentRound && gameActive) {
+      d.classList.add('current');
+    }
+  });
+}
+
+function setMsg(txt, type) {
+  const el = document.getElementById('msgBox');
+  el.textContent = txt;
+  el.className = 'msg-box msg-' + type;
+}
+
+function enableZones(enable) {
+  document.querySelectorAll('.goal-zone').forEach(z => {
+    if (enable) {
+      z.classList.remove('disabled');
+      z.onclick = () => dive(parseInt(z.dataset.z));
+    } else {
+      z.classList.add('disabled');
+      z.onclick = null;
+    }
+  });
+  canDive = enable;
+}
+
+function resetZones() {
+  document.querySelectorAll('.goal-zone').forEach(z => {
+    z.className = 'goal-zone disabled';
+    z.textContent = '🎯';
+    z.onclick = null;
+  });
+}
+
+function startGame() {
+  const bet = parseFloat(document.getElementById('betAmt').value);
+  if (!bet || bet <= 0) { toast('Enter a valid bet', 'err'); return; }
+  if (bet > balance) { toast('Insufficient balance', 'err'); return; }
+
+  curBet = bet;
+  balance -= bet;
+  sendBal();
+
+  gameActive = true;
+  currentRound = 0;
+  saves = 0;
+
+  document.getElementById('startBtn').style.display = 'none';
+  document.getElementById('betAmt').disabled = true;
+  document.getElementById('cdBar').classList.remove('show');
+  document.getElementById('cashoutBtn').style.display = 'block';
+  document.getElementById('cashoutBtn').disabled = true;
+
+  updateStats();
+  updateDots();
+
+  setTimeout(() => playRound(), 600);
+}
+
+function playRound() {
+  if (!gameActive || currentRound >= 5) { endGame(); return; }
+  resetZones();
+  document.getElementById('gkWrap').className = 'gk-wrap center';
+  setMsg('🥅 Choose a zone to dive! Quick!', 'wait');
+  enableZones(true);
+
+  // Auto-miss if player doesn't pick within 3 seconds
+  diveTimeout = setTimeout(() => {
+    if (canDive && gameActive) dive(-1);
+  }, 3000);
+}
+
+function dive(playerZone) {
+  if (!canDive) return;
+  clearTimeout(diveTimeout);
+  enableZones(false);
+
+  const ballZone = secureRandInt(6);
+  const saved = playerZone === ballZone;
+
+  // Move goalkeeper
+  const gkWrap = document.getElementById('gkWrap');
+  let gkPos = 'center';
+  if (playerZone === -1) {
+    const rndDive = secureRandInt(6);
+    gkPos = GK_POSITIONS[rndDive];
+  } else {
+    gkPos = GK_POSITIONS[playerZone];
+  }
+  gkWrap.className = 'gk-wrap ' + gkPos;
+
+  // Show ball after 250ms
+  setTimeout(() => {
+    const zones = document.querySelectorAll('.goal-zone');
+    zones[ballZone].textContent = '⚽';
+    zones[ballZone].classList.add(saved ? 'saved-zone' : 'goal-zone-hit');
+
+    if (playerZone >= 0) {
+      if (!saved) zones[playerZone].textContent = '🧤';
+    }
+
+    setTimeout(() => {
+      if (saved) {
+        saves++;
+        const mult = MULTS[Math.min(saves-1, 4)];
+        setMsg(`🧤 SAVE! Multiplier: ${mult.toFixed(2)}x`, 'win');
+        // Update round dot
+        const dots = document.querySelectorAll('.rdot');
+        if (dots[currentRound]) dots[currentRound].classList.add('saved');
+      } else {
+        setMsg(`⚽ GOAL! Ball went to ${ZONES[ballZone]}`, 'lose');
+        const dots = document.querySelectorAll('.rdot');
+        if (dots[currentRound]) dots[currentRound].classList.add('goal');
+      }
+
+      currentRound++;
+      updateStats();
+
+      // Enable cashout after first save
+      if (saves > 0) {
+        document.getElementById('cashoutBtn').disabled = false;
+      }
+
+      if (currentRound >= 5) {
+        setTimeout(() => endGame(), 1200);
+      } else if (!saved && saves === 0) {
+        // No saves and missed - end early
+        setTimeout(() => endGame(), 1200);
+      } else {
+        setTimeout(() => playRound(), 1500);
+      }
+    }, 600);
+  }, 300);
+}
+
+function doCashout() {
+  if (!gameActive || saves === 0) return;
+  clearTimeout(diveTimeout);
+  gameActive = false;
+  canDive = false;
+  enableZones(false);
+
+  const mult = MULTS[Math.min(saves-1, 4)];
+  const winAmt = parseFloat((curBet * mult).toFixed(2));
+  balance += winAmt;
+  sendBal();
+
+  setMsg(`💰 Cashed out with ${saves} save${saves!==1?'s':''}! Won K${winAmt.toFixed(2)} at ${mult.toFixed(2)}x!`, 'win');
+  toast(`✅ Won K${winAmt.toFixed(2)} at ${mult.toFixed(2)}x!`, 'ok');
+
+  document.getElementById('cashoutBtn').style.display = 'none';
+  startCountdown();
+}
+
+function endGame() {
+  if (!gameActive) return;
+  gameActive = false;
+  canDive = false;
+  enableZones(false);
+  document.getElementById('cashoutBtn').style.display = 'none';
+
+  if (saves > 0) {
+    const mult = MULTS[Math.min(saves-1, 4)];
+    const winAmt = parseFloat((curBet * mult).toFixed(2));
+    balance += winAmt;
+    sendBal();
+    setMsg(`🏆 Game Over! ${saves}/5 saves! Won K${winAmt.toFixed(2)} at ${mult.toFixed(2)}x!`, 'win');
+    toast(`🏆 Won K${winAmt.toFixed(2)} — ${saves}/5 saves!`, 'ok');
+  } else {
+    setMsg(`😔 No saves! Lost K${curBet.toFixed(2)}. Better luck next time!`, 'lose');
+    toast(`💔 Lost K${curBet.toFixed(2)}`, 'err');
+  }
+
+  startCountdown();
+}
+
+function startCountdown() {
+  let c = 5;
+  document.getElementById('cdBar').classList.add('show');
+  document.getElementById('cdNum').textContent = c;
+  document.getElementById('startBtn').style.display = 'block';
+  document.getElementById('startBtn').disabled = true;
+
+  const iv = setInterval(() => {
+    c--;
+    document.getElementById('cdNum').textContent = c;
+    if (c <= 0) {
+      clearInterval(iv);
+      document.getElementById('cdBar').classList.remove('show');
+      document.getElementById('startBtn').disabled = false;
+      document.getElementById('betAmt').disabled = false;
+      currentRound = 0;
+      saves = 0;
+      curBet = 0;
+      updateStats();
+      updateDots();
+      document.getElementById('gkWrap').className = 'gk-wrap center';
+      resetZones();
+      setMsg('Place your bet and start to save penalties!', 'info');
+    }
+  }, 1000);
+}
+
+let toastTimer;
+function toast(msg, type = 'ok') {
+  clearTimeout(toastTimer);
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast ' + type + ' show';
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+// Init
+updateStats();
+updateDots();
+</script>
+</body>
+</html>

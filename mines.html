@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<title>Mines — Bet Titan</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{--T:#2ab5a0;--TL:#3dd4be;--TD:#1a9080;--RED:#e53935;--GRN:#00897b;--AMB:#f59e0b;--GOLD:#ffd600;}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{min-height:100%;font-family:'Inter',sans-serif;background:#071018;color:#fff;overflow-x:hidden;}
+#app{display:flex;flex-direction:column;min-height:100vh;max-width:480px;margin:0 auto;}
+
+/* HEADER */
+.hdr{background:#0d2b2a;padding:10px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(42,181,160,.2);flex-shrink:0;}
+.hdr-title{font-size:16px;font-weight:800;color:#fff;}
+.hdr-bal{background:rgba(42,181,160,.15);border:1px solid rgba(42,181,160,.28);color:var(--TL);font-weight:700;font-size:13px;padding:5px 12px;border-radius:16px;margin-left:auto;}
+
+/* MULTIPLIER DISPLAY */
+.mult-display{background:linear-gradient(135deg,#0f3330,#0a2020);border-bottom:1px solid rgba(42,181,160,.15);
+  padding:14px;text-align:center;}
+.mult-lbl{font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}
+.mult-val{font-size:40px;font-weight:900;color:var(--GOLD);letter-spacing:-1px;line-height:1;}
+.mult-val.base{color:var(--TL);}
+.profit-lbl{font-size:13px;color:rgba(255,255,255,.5);margin-top:4px;}
+.profit-val{color:var(--GRN);font-weight:700;}
+
+/* GRID */
+.grid-section{padding:12px 14px;flex:1;}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;}
+.cell{aspect-ratio:1;background:#0f3330;border:2px solid rgba(42,181,160,.2);
+  border-radius:10px;display:flex;align-items:center;justify-content:center;
+  font-size:clamp(18px,4vw,28px);cursor:pointer;transition:all .2s;position:relative;overflow:hidden;
+  user-select:none;}
+.cell::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at center,rgba(42,181,160,.08),transparent);opacity:0;transition:opacity .2s;}
+.cell:hover:not(.revealed):not(.disabled)::before{opacity:1;}
+.cell:hover:not(.revealed):not(.disabled){border-color:var(--T);transform:scale(1.05);}
+.cell.revealed{cursor:default;transform:none;}
+.cell.gem{background:linear-gradient(135deg,#004d40,#00695c);border-color:var(--GRN);animation:popIn .25s ease;}
+.cell.mine{background:linear-gradient(135deg,#b71c1c,#7f0000);border-color:var(--RED);animation:popIn .25s ease;}
+.cell.disabled{cursor:not-allowed;opacity:.6;}
+@keyframes popIn{0%{transform:scale(.7);}60%{transform:scale(1.15);}100%{transform:scale(1);}}
+
+/* MINES SELECTOR */
+.mines-sel{padding:0 14px 12px;}
+.mines-lbl{font-size:11px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;}
+.mines-btns{display:flex;gap:5px;flex-wrap:wrap;}
+.mine-btn{padding:7px 12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  border-radius:8px;color:rgba(255,255,255,.6);font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;}
+.mine-btn.on{background:rgba(42,181,160,.2);border-color:var(--T);color:var(--TL);}
+.mine-btn:hover:not(.on){border-color:rgba(42,181,160,.4);color:rgba(255,255,255,.8);}
+
+/* CONTROLS */
+.controls{background:#0d2b2a;border-top:1px solid rgba(42,181,160,.2);padding:12px 14px;}
+.bet-row{display:flex;gap:8px;margin-bottom:10px;align-items:center;}
+.bet-input{flex:1;padding:11px 13px;background:rgba(255,255,255,.06);
+  border:2px solid rgba(42,181,160,.25);border-radius:9px;color:#fff;font-size:15px;
+  font-weight:700;text-align:center;font-family:'Inter';outline:none;}
+.bet-input:focus{border-color:var(--T);}
+.quick-bets{display:flex;gap:5px;margin-bottom:10px;}
+.qb{flex:1;padding:7px 4px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);
+  border-radius:7px;font-size:11px;font-weight:700;color:rgba(255,255,255,.6);
+  cursor:pointer;text-align:center;transition:all .2s;}
+.qb:hover{background:rgba(42,181,160,.15);border-color:var(--T);color:var(--TL);}
+.action-btn{width:100%;padding:14px;border:none;border-radius:11px;font-size:16px;
+  font-weight:800;cursor:pointer;font-family:'Inter';transition:all .2s;}
+.btn-start{background:linear-gradient(135deg,var(--T),var(--TD));color:#fff;
+  box-shadow:0 4px 20px rgba(42,181,160,.35);}
+.btn-start:hover{filter:brightness(1.1);}
+.btn-start:disabled{opacity:.45;cursor:not-allowed;box-shadow:none;}
+.btn-cashout{background:linear-gradient(135deg,#00d4aa,#00897b);color:#fff;
+  box-shadow:0 4px 20px rgba(0,212,170,.4);animation:pulse .9s ease infinite;}
+@keyframes pulse{0%,100%{box-shadow:0 4px 20px rgba(0,212,170,.4);}50%{box-shadow:0 4px 30px rgba(0,212,170,.7);}}
+.btn-cashout:hover{filter:brightness(1.1);}
+.btn-cashout:disabled{opacity:.45;cursor:not-allowed;animation:none;}
+
+/* COUNTDOWN */
+.countdown-bar{background:rgba(245,158,11,.1);border-top:1px solid rgba(245,158,11,.25);
+  padding:8px 14px;text-align:center;font-size:12px;font-weight:600;color:var(--AMB);display:none;}
+.countdown-bar.show{display:block;}
+
+/* STATS */
+.stats-row{display:flex;gap:8px;padding:0 14px 12px;}
+.stat-box{flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  border-radius:9px;padding:9px;text-align:center;}
+.stat-box .sl{font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;}
+.stat-box .sv{font-size:18px;font-weight:800;color:var(--TL);}
+
+/* MESSAGE */
+.message-bar{margin:0 14px 12px;padding:10px 14px;border-radius:9px;font-size:13px;font-weight:600;text-align:center;}
+.msg-info{background:rgba(42,181,160,.1);border:1px solid rgba(42,181,160,.25);color:var(--TL);}
+.msg-win{background:rgba(0,137,123,.2);border:1px solid rgba(0,137,123,.4);color:#4db6ac;}
+.msg-lose{background:rgba(229,57,53,.15);border:1px solid rgba(229,57,53,.3);color:#ef9a9a;}
+.msg-wait{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);color:var(--AMB);}
+
+/* TOAST */
+.toast{position:fixed;top:12px;left:50%;transform:translateX(-50%) translateY(-80px);
+  background:#0d2b2a;border:1px solid rgba(42,181,160,.3);color:#fff;padding:9px 18px;
+  border-radius:20px;font-size:13px;font-weight:600;z-index:100;transition:transform .3s;
+  white-space:nowrap;text-align:center;max-width:90vw;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.ok{border-color:var(--GRN);color:#4db6ac;}
+.toast.err{border-color:var(--RED);color:#ef9a9a;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="hdr">
+    <div class="hdr-title">💣 MINES</div>
+    <div class="hdr-bal">K<span id="balDisplay">0.00</span></div>
+  </div>
+
+  <div class="mult-display">
+    <div class="mult-lbl">Current Multiplier</div>
+    <div class="mult-val base" id="multVal">1.00x</div>
+    <div class="profit-lbl">Profit: <span class="profit-val" id="profitVal">K0.00</span></div>
+  </div>
+
+  <div class="mines-sel">
+    <div class="mines-lbl">Mines Count</div>
+    <div class="mines-btns" id="minesBtns">
+      <button class="mine-btn" onclick="setMines(1,this)">1</button>
+      <button class="mine-btn" onclick="setMines(3,this)">3</button>
+      <button class="mine-btn on" onclick="setMines(5,this)">5</button>
+      <button class="mine-btn" onclick="setMines(10,this)">10</button>
+      <button class="mine-btn" onclick="setMines(15,this)">15</button>
+      <button class="mine-btn" onclick="setMines(20,this)">20</button>
+      <button class="mine-btn" onclick="setMines(24,this)">24</button>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-box"><div class="sl">Gems Found</div><div class="sv" id="gemsFound">0</div></div>
+    <div class="stat-box"><div class="sl">Mines</div><div class="sv" id="minesCount">5</div></div>
+    <div class="stat-box"><div class="sl">Safe Left</div><div class="sv" id="safeLeft">20</div></div>
+  </div>
+
+  <div class="message-bar msg-info" id="msgBar">Choose mines count, enter bet, and start!</div>
+
+  <div class="grid-section">
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="countdown-bar" id="cdBar">Next round in <span id="cdNum">5</span>s...</div>
+
+  <div class="controls">
+    <div class="quick-bets">
+      <div class="qb" onclick="setAmt(5)">K5</div>
+      <div class="qb" onclick="setAmt(10)">K10</div>
+      <div class="qb" onclick="setAmt(20)">K20</div>
+      <div class="qb" onclick="setAmt(50)">K50</div>
+      <div class="qb" onclick="setAmt(100)">K100</div>
+    </div>
+    <div class="bet-row">
+      <input class="bet-input" id="betAmt" type="number" value="10" min="1" placeholder="Bet amount"/>
+    </div>
+    <button class="action-btn btn-start" id="startBtn" onclick="startGame()">Start Game</button>
+    <button class="action-btn btn-cashout" id="cashoutBtn" onclick="doCashout()" style="display:none;margin-top:8px">
+      Cash Out — <span id="cashoutVal">1.00x</span>
+    </button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let balance = 0;
+let gameActive = false;
+let curBet = 0;
+let minesCount = 5;
+let minePositions = [];
+let revealed = new Array(25).fill(null); // null | 'gem' | 'mine'
+let gemsFound = 0;
+let currentMultiplier = 1.0;
+let cdTimer = null;
+
+window.addEventListener('message', e => {
+  if (e.data && e.data.type === 'balance') {
+    balance = e.data.balance;
+    document.getElementById('balDisplay').textContent = balance.toFixed(2);
+  }
+});
+if (window.parent !== window) {
+  window.parent.postMessage({ type: 'gb' }, '*');
+}
+
+function sendBal() {
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: 'balUpdate', balance }, '*');
+  }
+  document.getElementById('balDisplay').textContent = balance.toFixed(2);
+}
+
+// Crypto-random shuffle
+function secureRandom() {
+  try {
+    const arr = new Uint32Array(1);
+    crypto.getRandomValues(arr);
+    return arr[0] / 0xFFFFFFFF;
+  } catch(e) {
+    return Math.random();
+  }
+}
+
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(secureRandom() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function calcMultiplier(mines, gems) {
+  if (gems === 0) return 1.0;
+  const total = 25, safe = total - mines;
+  let mult = 1.0;
+  for (let i = 0; i < gems; i++) {
+    const remaining = safe - i;
+    const prob = remaining / (total - i);
+    mult *= (1 / prob) * 0.97;
+  }
+  return Math.max(1.0, parseFloat(mult.toFixed(2)));
+}
+
+function setMines(n, el) {
+  if (gameActive) return;
+  minesCount = n;
+  document.querySelectorAll('.mine-btn').forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('minesCount').textContent = n;
+  document.getElementById('safeLeft').textContent = 25 - n;
+  renderGrid();
+}
+
+function setAmt(v) { document.getElementById('betAmt').value = v; }
+
+function renderGrid() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  for (let i = 0; i < 25; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.dataset.i = i;
+
+    if (revealed[i] === 'gem') {
+      cell.classList.add('revealed', 'gem');
+      cell.textContent = '💎';
+    } else if (revealed[i] === 'mine') {
+      cell.classList.add('revealed', 'mine');
+      cell.textContent = '💣';
+    } else {
+      cell.textContent = '🔲';
+      if (gameActive) {
+        cell.onclick = () => revealCell(i);
+      } else {
+        cell.classList.add('disabled');
+      }
+    }
+    grid.appendChild(cell);
+  }
+}
+
+function startGame() {
+  const bet = parseFloat(document.getElementById('betAmt').value);
+  if (!bet || bet <= 0) { toast('Enter a valid bet', 'err'); return; }
+  if (bet > balance) { toast('Insufficient balance', 'err'); return; }
+  if (minesCount >= 25) { toast('Too many mines', 'err'); return; }
+
+  // Deduct bet
+  curBet = bet;
+  balance -= bet;
+  sendBal();
+
+  // Generate mine positions
+  const positions = shuffleArray([...Array(25).keys()]);
+  minePositions = positions.slice(0, minesCount);
+
+  // Reset state
+  gameActive = true;
+  revealed = new Array(25).fill(null);
+  gemsFound = 0;
+  currentMultiplier = 1.0;
+
+  // Update UI
+  document.getElementById('multVal').textContent = '1.00x';
+  document.getElementById('multVal').className = 'mult-val base';
+  document.getElementById('profitVal').textContent = 'K0.00';
+  document.getElementById('gemsFound').textContent = '0';
+  document.getElementById('safeLeft').textContent = 25 - minesCount;
+  document.getElementById('startBtn').style.display = 'none';
+  document.getElementById('cashoutBtn').style.display = 'block';
+  document.getElementById('cashoutVal').textContent = '1.00x';
+  document.getElementById('cdBar').classList.remove('show');
+  setMsg('🎮 Click cells to reveal gems! Avoid the mines!', 'info');
+  document.querySelector('.mines-btns').style.opacity = '.4';
+  document.getElementById('betAmt').disabled = true;
+  renderGrid();
+}
+
+function revealCell(index) {
+  if (!gameActive || revealed[index]) return;
+
+  if (minePositions.includes(index)) {
+    // HIT A MINE
+    revealed[index] = 'mine';
+    gameActive = false;
+
+    // Reveal ALL mines
+    minePositions.forEach(pos => { revealed[pos] = 'mine'; });
+    renderGrid();
+
+    setMsg(`💣 BOOM! Hit a mine. Lost K${curBet.toFixed(2)}`, 'lose');
+    document.getElementById('startBtn').style.display = 'block';
+    document.getElementById('startBtn').disabled = true;
+    document.getElementById('cashoutBtn').style.display = 'none';
+    document.querySelector('.mines-btns').style.opacity = '1';
+    document.getElementById('betAmt').disabled = false;
+    toast(`💣 Boom! Lost K${curBet.toFixed(2)}`, 'err');
+    startCountdown();
+  } else {
+    // GEM FOUND
+    revealed[index] = 'gem';
+    gemsFound++;
+
+    currentMultiplier = calcMultiplier(minesCount, gemsFound);
+    const profit = parseFloat((curBet * currentMultiplier - curBet).toFixed(2));
+    const win = parseFloat((curBet * currentMultiplier).toFixed(2));
+
+    document.getElementById('multVal').textContent = currentMultiplier.toFixed(2) + 'x';
+    document.getElementById('multVal').className = 'mult-val';
+    document.getElementById('profitVal').textContent = '+K' + profit.toFixed(2);
+    document.getElementById('gemsFound').textContent = gemsFound;
+    document.getElementById('cashoutVal').textContent = currentMultiplier.toFixed(2) + 'x';
+
+    const safeRemaining = (25 - minesCount) - gemsFound;
+    document.getElementById('safeLeft').textContent = safeRemaining;
+    renderGrid();
+
+    setMsg(`💎 Gem! Multiplier: ${currentMultiplier.toFixed(2)}x — Cash out for K${win.toFixed(2)}`, 'info');
+
+    // Auto-cashout if all gems found
+    if (safeRemaining === 0) {
+      doCashout();
+    }
+  }
+}
+
+function doCashout() {
+  if (!gameActive || gemsFound === 0) {
+    if (gameActive && gemsFound === 0) toast('Reveal at least one gem first!', 'err');
+    return;
+  }
+
+  gameActive = false;
+  const winAmt = parseFloat((curBet * currentMultiplier).toFixed(2));
+  balance += winAmt;
+  sendBal();
+
+  // Reveal all mines
+  minePositions.forEach(pos => { revealed[pos] = 'mine'; });
+  renderGrid();
+
+  setMsg(`🎉 Cashed out! Won K${winAmt.toFixed(2)} at ${currentMultiplier.toFixed(2)}x!`, 'win');
+  toast(`✅ Won K${winAmt.toFixed(2)} at ${currentMultiplier.toFixed(2)}x!`, 'ok');
+
+  document.getElementById('startBtn').style.display = 'block';
+  document.getElementById('startBtn').disabled = true;
+  document.getElementById('cashoutBtn').style.display = 'none';
+  document.querySelector('.mines-btns').style.opacity = '1';
+  document.getElementById('betAmt').disabled = false;
+  startCountdown();
+}
+
+function startCountdown() {
+  let c = 5;
+  document.getElementById('cdBar').classList.add('show');
+  document.getElementById('cdNum').textContent = c;
+
+  cdTimer = setInterval(() => {
+    c--;
+    document.getElementById('cdNum').textContent = c;
+    if (c <= 0) {
+      clearInterval(cdTimer);
+      document.getElementById('cdBar').classList.remove('show');
+      document.getElementById('startBtn').disabled = false;
+      revealed = new Array(25).fill(null);
+      gemsFound = 0;
+      currentMultiplier = 1.0;
+      document.getElementById('multVal').textContent = '1.00x';
+      document.getElementById('multVal').className = 'mult-val base';
+      document.getElementById('profitVal').textContent = 'K0.00';
+      document.getElementById('gemsFound').textContent = '0';
+      document.getElementById('safeLeft').textContent = 25 - minesCount;
+      setMsg('Choose mines count, enter bet, and start!', 'info');
+      renderGrid();
+    }
+  }, 1000);
+}
+
+function setMsg(text, type) {
+  const el = document.getElementById('msgBar');
+  el.textContent = text;
+  el.className = 'message-bar msg-' + type;
+}
+
+let toastTimer;
+function toast(msg, type = 'ok') {
+  clearTimeout(toastTimer);
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast ' + type + ' show';
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// Init
+renderGrid();
+</script>
+</body>
+</html>
